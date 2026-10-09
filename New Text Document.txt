@@ -1,0 +1,719 @@
+--========================================================
+-- PLESNEVIY XYU CONFIG - KEY GATE
+--========================================================
+-- The original script starts only after the correct key is entered.
+
+local REQUIRED_KEY = "KEY-MXXY-JKC5-JLT5-TRNF"
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local function GetKeyParent()
+    local ok, hui = pcall(function()
+        return gethui and gethui()
+    end)
+    if ok and hui then return hui end
+
+    local ok2, cg = pcall(function()
+        return game:GetService("CoreGui")
+    end)
+    if ok2 and cg then return cg end
+
+    return LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local keyParent = GetKeyParent()
+
+-- Remove an old key prompt if the script was previously started.
+pcall(function()
+    local old = keyParent:FindFirstChild("PlesneviyXyuKeyGate")
+    if old then old:Destroy() end
+end)
+
+local keyGui = Instance.new("ScreenGui")
+keyGui.Name = "PlesneviyXyuKeyGate"
+keyGui.ResetOnSpawn = false
+keyGui.IgnoreGuiInset = true
+keyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+pcall(function()
+    if syn and syn.protect_gui then
+        syn.protect_gui(keyGui)
+    elseif protectgui then
+        protectgui(keyGui)
+    end
+end)
+
+keyGui.Parent = keyParent
+
+local backdrop = Instance.new("Frame")
+backdrop.Size = UDim2.fromScale(1, 1)
+backdrop.BackgroundColor3 = Color3.fromRGB(5, 4, 9)
+backdrop.BackgroundTransparency = 0.08
+backdrop.BorderSizePixel = 0
+backdrop.Parent = keyGui
+
+local panel = Instance.new("Frame")
+panel.Size = UDim2.fromOffset(430, 245)
+panel.Position = UDim2.fromScale(0.5, 0.5)
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.BackgroundColor3 = Color3.fromRGB(15, 12, 22)
+panel.BorderSizePixel = 0
+panel.Parent = backdrop
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = panel
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(168, 85, 247)
+stroke.Thickness = 1.4
+stroke.Parent = panel
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -40, 0, 35)
+title.Position = UDim2.fromOffset(20, 20)
+title.BackgroundTransparency = 1
+title.Text = "PLESNEVIY XYU CONFIG"
+title.TextColor3 = Color3.fromRGB(243, 235, 255)
+title.TextSize = 18
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = panel
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -40, 0, 25)
+subtitle.Position = UDim2.fromOffset(20, 54)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Enter your access key to continue."
+subtitle.TextColor3 = Color3.fromRGB(160, 145, 185)
+subtitle.TextSize = 11
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = panel
+
+local input = Instance.new("TextBox")
+input.Size = UDim2.new(1, -40, 0, 42)
+input.Position = UDim2.fromOffset(20, 91)
+input.BackgroundColor3 = Color3.fromRGB(24, 19, 34)
+input.BorderSizePixel = 0
+input.ClearTextOnFocus = false
+input.PlaceholderText = "Enter key..."
+input.PlaceholderColor3 = Color3.fromRGB(105, 92, 125)
+input.Text = ""
+input.TextColor3 = Color3.fromRGB(243, 235, 255)
+input.TextSize = 12
+input.Font = Enum.Font.Gotham
+input.TextXAlignment = Enum.TextXAlignment.Left
+input.Parent = panel
+
+local inputPadding = Instance.new("UIPadding")
+inputPadding.PaddingLeft = UDim.new(0, 12)
+inputPadding.PaddingRight = UDim.new(0, 12)
+inputPadding.Parent = input
+
+local inputCorner = Instance.new("UICorner")
+inputCorner.CornerRadius = UDim.new(0, 6)
+inputCorner.Parent = input
+
+local inputStroke = Instance.new("UIStroke")
+inputStroke.Color = Color3.fromRGB(54, 38, 82)
+inputStroke.Thickness = 1
+inputStroke.Parent = input
+
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -40, 0, 22)
+status.Position = UDim2.fromOffset(20, 137)
+status.BackgroundTransparency = 1
+status.Text = ""
+status.TextColor3 = Color3.fromRGB(251, 191, 36)
+status.TextSize = 10
+status.Font = Enum.Font.GothamMedium
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.Parent = panel
+
+local unlock = Instance.new("TextButton")
+unlock.Size = UDim2.new(1, -40, 0, 42)
+unlock.Position = UDim2.fromOffset(20, 165)
+unlock.BackgroundColor3 = Color3.fromRGB(168, 85, 247)
+unlock.BorderSizePixel = 0
+unlock.AutoButtonColor = false
+unlock.Text = "UNLOCK"
+unlock.TextColor3 = Color3.fromRGB(255, 255, 255)
+unlock.TextSize = 12
+unlock.Font = Enum.Font.GothamBold
+unlock.Parent = panel
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 6)
+buttonCorner.Parent = unlock
+
+local attempts = 0
+local unlocked = false
+local busy = false
+
+local function Deny()
+    attempts += 1
+    status.Text = "Invalid key. Access denied."
+    status.TextColor3 = Color3.fromRGB(255, 95, 110)
+
+    local original = panel.Position
+    local left = original + UDim2.fromOffset(-7, 0)
+    local right = original + UDim2.fromOffset(7, 0)
+
+    task.spawn(function()
+        TweenService:Create(panel, TweenInfo.new(0.045), {Position = left}):Play()
+        task.wait(0.045)
+        TweenService:Create(panel, TweenInfo.new(0.045), {Position = right}):Play()
+        task.wait(0.045)
+        TweenService:Create(panel, TweenInfo.new(0.045), {Position = original}):Play()
+    end)
+end
+
+local function Unlock()
+    if busy or unlocked then return end
+    busy = true
+
+    if input.Text == REQUIRED_KEY then
+        unlocked = true
+        status.Text = "Access granted. Loading..."
+        status.TextColor3 = Color3.fromRGB(52, 211, 153)
+        unlock.Text = "ACCESS GRANTED"
+
+        task.wait(0.25)
+
+        -- Remove the temporary Rayfield/key UI after successful unlock.
+        -- This keeps the unlocked script clean and prevents the key window
+        -- from remaining behind the main menu.
+        pcall(function()
+            local containers = {}
+
+            local okHui, hui = pcall(function()
+                return gethui and gethui()
+            end)
+            if okHui and hui then
+                table.insert(containers, hui)
+            end
+
+            local okCore, coreGui = pcall(function()
+                return game:GetService("CoreGui")
+            end)
+            if okCore and coreGui then
+                table.insert(containers, coreGui)
+            end
+
+            local okPlayerGui, playerGui = pcall(function()
+                return LocalPlayer:FindFirstChildOfClass("PlayerGui")
+            end)
+            if okPlayerGui and playerGui then
+                table.insert(containers, playerGui)
+            end
+
+            for _, container in ipairs(containers) do
+                for _, gui in ipairs(container:GetChildren()) do
+                    local guiName = string.lower(tostring(gui.Name))
+                    if guiName == "rayfield"
+                        or guiName:find("rayfield", 1, true)
+                        or guiName == "plesnevi yxurayfield"
+                        or guiName == "plesnevi yxukeygate" then
+                        pcall(function()
+                            gui:Destroy()
+                        end)
+                    end
+                end
+            end
+        end)
+
+        keyGui:Destroy()
+    else
+        Deny()
+        busy = false
+    end
+end
+
+unlock.MouseButton1Click:Connect(Unlock)
+
+input.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        Unlock()
+    end
+end)
+
+unlock.MouseEnter:Connect(function()
+    TweenService:Create(unlock, TweenInfo.new(0.12), {
+        BackgroundColor3 = Color3.fromRGB(192, 132, 252)
+    }):Play()
+end)
+
+unlock.MouseLeave:Connect(function()
+    TweenService:Create(unlock, TweenInfo.new(0.12), {
+        BackgroundColor3 = Color3.fromRGB(168, 85, 247)
+    }):Play()
+end)
+
+-- Do not execute the original script until the gate is passed.
+while not unlocked do
+    task.wait()
+end
+
+--========================================================
+-- ORIGINAL SCRIPT BEGINS HERE
+--========================================================
+
+-- Basketball Legends - ez.ggs - V2 (Purple Glow Theme Fixed)
+-- RightAlt to Toggle | Clean Switch Toggles | No Hitbox Extender
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- Settings
+local enabled = true
+local antiSmother = true
+local farShots = true
+local maxVeryLateEarly = true
+local autoGuardEnabled = true
+local perfectValue = 1.30
+
+-- Colors
+local purpleDark = Color3.fromRGB(24, 12, 19)
+local purpleMid = Color3.fromRGB(55, 20, 38)
+local purpleAccent = Color3.fromRGB(190, 45, 105)
+local purpleLight = Color3.fromRGB(255, 105, 170)
+local purpleGlow = Color3.fromRGB(220, 25, 105)
+local textWhite = Color3.fromRGB(255, 240, 247)
+local textDim = Color3.fromRGB(190, 135, 160)
+local switchOn = Color3.fromRGB(220, 45, 120)
+local switchOff = Color3.fromRGB(75, 40, 55)
+-- ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "Mxxy016 V1"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Glow Layers (Multiple expanding frames for real glow)
+local glowLayers = {}
+local glowSizes = {40, 30, 20, 12, 6}
+local glowTransparency = {0.92, 0.88, 0.82, 0.75, 0.65}
+
+for i = 1, #glowSizes do
+    local layer = Instance.new("Frame")
+    layer.Size = UDim2.new(0, 300 + glowSizes[i], 0, 420 + glowSizes[i])
+    layer.Position = UDim2.new(0.5, -(150 + glowSizes[i]/2), 0.5, -(210 + glowSizes[i]/2))
+    layer.BackgroundColor3 = purpleGlow
+    layer.BackgroundTransparency = glowTransparency[i]
+    layer.BorderSizePixel = 0
+    layer.ZIndex = 0
+    layer.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 16 + glowSizes[i]/2)
+    corner.Parent = layer
+
+    table.insert(glowLayers, layer)
+end
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 300, 0, 420)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -210)
+mainFrame.BackgroundColor3 = purpleDark
+mainFrame.BorderSizePixel = 0
+mainFrame.ZIndex = 10
+mainFrame.Visible = true
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 16)
+mainCorner.Parent = mainFrame
+
+-- Subtle border
+local innerStroke = Instance.new("UIStroke")
+innerStroke.Color = purpleAccent
+innerStroke.Thickness = 1
+innerStroke.Transparency = 0.5
+innerStroke.Parent = mainFrame
+
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 52)
+titleBar.BackgroundColor3 = purpleMid
+titleBar.BorderSizePixel = 0
+titleBar.ZIndex = 11
+titleBar.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 16)
+titleCorner.Parent = titleBar
+
+-- Fix bottom corners
+local titleFix = Instance.new("Frame")
+titleFix.Size = UDim2.new(1, 0, 0, 12)
+titleFix.Position = UDim2.new(0, 0, 1, -12)
+titleFix.BackgroundColor3 = purpleMid
+titleFix.BorderSizePixel = 0
+titleFix.ZIndex = 11
+titleFix.Parent = titleBar
+
+-- Title Label
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -80, 0, 24)
+titleLabel.Position = UDim2.new(0, 14, 0, 8)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Mxxy016 V1"
+titleLabel.TextColor3 = textWhite
+titleLabel.TextSize = 17
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.ZIndex = 12
+titleLabel.Parent = titleBar
+
+-- Subtitle
+local subtitleLabel = Instance.new("TextLabel")
+subtitleLabel.Size = UDim2.new(1, -80, 0, 16)
+subtitleLabel.Position = UDim2.new(0, 14, 0, 30)
+subtitleLabel.BackgroundTransparency = 1
+subtitleLabel.Text = "Basketball Legends Hub"
+subtitleLabel.TextColor3 = textDim
+subtitleLabel.TextSize = 10
+subtitleLabel.Font = Enum.Font.Gotham
+subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+subtitleLabel.ZIndex = 12
+subtitleLabel.Parent = titleBar
+
+-- Keybind badge
+local keybindLabel = Instance.new("TextLabel")
+keybindLabel.Size = UDim2.new(0, 55, 0, 22)
+keybindLabel.Position = UDim2.new(1, -65, 0, 15)
+keybindLabel.BackgroundColor3 = Color3.fromRGB(50, 30, 80)
+keybindLabel.Text = "R.Alt"
+keybindLabel.TextColor3 = purpleLight
+keybindLabel.TextSize = 10
+keybindLabel.Font = Enum.Font.GothamBold
+keybindLabel.ZIndex = 12
+keybindLabel.Parent = titleBar
+
+local keybindCorner = Instance.new("UICorner")
+keybindCorner.CornerRadius = UDim.new(0, 6)
+keybindCorner.Parent = keybindLabel
+
+local keybindStroke = Instance.new("UIStroke")
+keybindStroke.Color = purpleAccent
+keybindStroke.Thickness = 0.5
+keybindStroke.Transparency = 0.5
+keybindStroke.Parent = keybindLabel
+
+-- Scrollable Area
+local scrolling = Instance.new("ScrollingFrame")
+scrolling.Size = UDim2.new(1, -24, 1, -65)
+scrolling.Position = UDim2.new(0, 12, 0, 60)
+scrolling.BackgroundTransparency = 1
+scrolling.ScrollBarThickness = 3
+scrolling.ScrollBarImageColor3 = purpleAccent
+scrolling.ScrollBarImageTransparency = 0.4
+scrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrolling.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrolling.ZIndex = 11
+scrolling.Parent = mainFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 8)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = scrolling
+
+local listPadding = Instance.new("UIPadding")
+listPadding.PaddingBottom = UDim.new(0, 15)
+listPadding.Parent = scrolling
+
+-- Switch Toggle Creator
+local function createSwitchToggle(txt, desc, default, callback)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, 0, 0, 56)
+    container.BackgroundColor3 = Color3.fromRGB(30, 18, 50)
+    container.BorderSizePixel = 0
+    container.ZIndex = 12
+    container.Parent = scrolling
+
+    local containerCorner = Instance.new("UICorner")
+    containerCorner.CornerRadius = UDim.new(0, 10)
+    containerCorner.Parent = container
+
+    local containerStroke = Instance.new("UIStroke")
+    containerStroke.Color = purpleAccent
+    containerStroke.Thickness = 0.5
+    containerStroke.Transparency = 0.8
+    containerStroke.Parent = container
+
+    -- Label
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -70, 0, 24)
+    label.Position = UDim2.new(0, 12, 0, 10)
+    label.BackgroundTransparency = 1
+    label.Text = txt
+    label.TextColor3 = textWhite
+    label.TextSize = 12
+    label.Font = Enum.Font.GothamSemibold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 13
+    label.Parent = container
+
+    -- Description
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(1, -70, 0, 16)
+    descLabel.Position = UDim2.new(0, 12, 0, 32)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Text = desc
+    descLabel.TextColor3 = textDim
+    descLabel.TextSize = 9
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.ZIndex = 13
+    descLabel.Parent = container
+
+    -- Switch Background
+    local switchBg = Instance.new("Frame")
+    switchBg.Size = UDim2.new(0, 42, 0, 22)
+    switchBg.Position = UDim2.new(1, -55, 0.5, -11)
+    switchBg.BackgroundColor3 = default and switchOn or switchOff
+    switchBg.BorderSizePixel = 0
+    switchBg.ZIndex = 13
+    switchBg.Parent = container
+
+    local switchBgCorner = Instance.new("UICorner")
+    switchBgCorner.CornerRadius = UDim.new(1, 0)
+    switchBgCorner.Parent = switchBg
+
+    -- Switch Circle
+    local switchCircle = Instance.new("Frame")
+    local circleOffset = default and 20 or 2
+    switchCircle.Size = UDim2.new(0, 18, 0, 18)
+    switchCircle.Position = UDim2.new(0, circleOffset, 0, 2)
+    switchCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    switchCircle.BorderSizePixel = 0
+    switchCircle.ZIndex = 14
+    switchCircle.Parent = switchBg
+
+    local circleCorner = Instance.new("UICorner")
+    circleCorner.CornerRadius = UDim.new(1, 0)
+    circleCorner.Parent = switchCircle
+
+    -- Switch glow when on
+    local switchGlow = Instance.new("Frame")
+    switchGlow.Size = UDim2.new(1, 6, 1, 6)
+    switchGlow.Position = UDim2.new(0, -3, 0, -3)
+    switchGlow.BackgroundColor3 = purpleLight
+    switchGlow.BackgroundTransparency = default and 0.7 or 1
+    switchGlow.BorderSizePixel = 0
+    switchGlow.ZIndex = 12
+    switchGlow.Parent = switchBg
+
+    local switchGlowCorner = Instance.new("UICorner")
+    switchGlowCorner.CornerRadius = UDim.new(1, 0)
+    switchGlowCorner.Parent = switchGlow
+
+    -- Click Button
+    local clickBtn = Instance.new("TextButton")
+    clickBtn.Size = UDim2.new(1, 0, 1, 0)
+    clickBtn.BackgroundTransparency = 1
+    clickBtn.Text = ""
+    clickBtn.ZIndex = 15
+    clickBtn.Parent = container
+
+    local isOn = default
+
+    local function updateSwitch()
+        local targetPos = isOn and 20 or 2
+        local targetColor = isOn and switchOn or switchOff
+        local targetGlow = isOn and 0.7 or 1
+
+        TweenService:Create(switchCircle, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0, targetPos, 0, 2)
+        }):Play()
+
+        TweenService:Create(switchBg, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            BackgroundColor3 = targetColor
+        }):Play()
+
+        TweenService:Create(switchGlow, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            BackgroundTransparency = targetGlow
+        }):Play()
+    end
+
+    clickBtn.MouseButton1Click:Connect(function()
+        isOn = not isOn
+        updateSwitch()
+        if callback then callback(isOn) end
+    end)
+
+    return container
+end
+
+-- Create Toggles
+createSwitchToggle("Auto Perfect", "Forces perfect shot timing", enabled, function(v) enabled = v end)
+createSwitchToggle("Anti-Smother", "Prevents shot contest penalties", antiSmother, function(v) antiSmother = v end)
+createSwitchToggle("Far Shots", "Enable extremely long range shots", farShots, function(v) farShots = v end)
+createSwitchToggle("Max Late/Early", "Very late & very early green window", maxVeryLateEarly, function(v) maxVeryLateEarly = v end)
+createSwitchToggle("Auto Guard", "Auto face ball carrier", autoGuardEnabled, function(v) autoGuardEnabled = v end)
+
+-- Divider
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(1, -20, 0, 1)
+divider.BackgroundColor3 = purpleAccent
+divider.BackgroundTransparency = 0.7
+divider.BorderSizePixel = 0
+divider.ZIndex = 12
+divider.Parent = scrolling
+
+-- Footer
+local footerLabel = Instance.new("TextLabel")
+footerLabel.Size = UDim2.new(1, 0, 0, 20)
+footerLabel.BackgroundTransparency = 1
+footerLabel.Text = "RightAlt to toggle • Made with <3"
+footerLabel.TextColor3 = textDim
+footerLabel.TextSize = 9
+footerLabel.Font = Enum.Font.Gotham
+footerLabel.ZIndex = 12
+footerLabel.Parent = scrolling
+
+-- Toggle GUI Visibility
+local function toggleVisibility()
+    local isVisible = mainFrame.Visible
+    mainFrame.Visible = not isVisible
+    for _, layer in ipairs(glowLayers) do
+        layer.Visible = not isVisible
+    end
+end
+
+-- RightAlt Keybind
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightAlt then
+        toggleVisibility()
+    end
+end)
+
+-- Draggable
+local dragging = false
+local dragStart, startPos
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        mainFrame.Position = newPos
+        
+        -- Move glow layers with main frame
+        for i, layer in ipairs(glowLayers) do
+            local offset = glowSizes[i] / 2
+            layer.Position = UDim2.new(newPos.X.Scale, newPos.X.Offset - offset, newPos.Y.Scale, newPos.Y.Offset - offset)
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- ==================== MAX GREEN FORCING ====================
+local function forcePerfectShot()
+    if not enabled then return end
+
+    local pgui = player.PlayerGui
+    local visual = pgui:FindFirstChild("Visual") or pgui:FindFirstChildWhichIsA("ScreenGui")
+    if visual then
+        local shooting = visual:FindFirstChild("Shooting")
+        if shooting then
+            local bar = shooting:FindFirstChild("Bar") or shooting:FindFirstChild("Meter")
+            if bar and bar:IsA("Frame") then
+                bar.Size = UDim2.fromScale(1, 1)
+                TweenService:Create(bar, TweenInfo.new(0.005), {Size = UDim2.fromScale(1, 1)}):Play()
+            end
+        end
+    end
+
+    pcall(function()
+        local char = player.Character
+        if char then
+            for _, obj in pairs(char:GetDescendants()) do
+                local n = obj.Name:lower()
+                if n:find("contest") or n:find("smother") or n:find("shot") or n:find("meter") 
+                   or n:find("release") or n:find("range") or n:find("quality") 
+                   or n:find("perfect") or n:find("great") or n:find("late") or n:find("early") then
+                    
+                    if obj:IsA("NumberValue") or obj:IsA("IntValue") or obj:IsA("FloatValue") then
+                        obj.Value = perfectValue
+                    elseif obj:IsA("BindableEvent") then
+                        obj:Fire(perfectValue)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+RunService.Heartbeat:Connect(forcePerfectShot)
+
+UserInputService.InputBegan:Connect(function(input)
+    if enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        for i = 1, 8 do
+            task.spawn(function()
+                task.wait(0.002 * i)
+                forcePerfectShot()
+            end)
+        end
+    end
+end)
+
+-- ==================== AUTO GUARD ====================
+local guardConnection
+local function startAutoGuard()
+    if guardConnection then guardConnection:Disconnect() end
+    guardConnection = RunService.Heartbeat:Connect(function()
+        if not autoGuardEnabled then return end
+        local myChar = player.Character
+        if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
+        local myRoot = myChar.HumanoidRootPart
+        local closest, minDist = nil, math.huge
+
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= player and plr.Character then
+                local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local hasBall = plr.Character:FindFirstChild("Basketball") or plr.Character:FindFirstChildWhichIsA("Tool")
+                    if hasBall then
+                        local dist = (myRoot.Position - root.Position).Magnitude
+                        if dist < minDist and dist < 60 then
+                            minDist = dist
+                            closest = root
+                        end
+                    end
+                end
+            end
+        end
+
+        if closest then
+            local dir = (closest.Position - myRoot.Position).Unit
+            myRoot.CFrame = CFrame.lookAt(myRoot.Position, myRoot.Position + dir)
+        end
+    end)
+end
+startAutoGuard()
+
+print("Mxxy's V1 Loaded!")
+print("Press RightAlt to toggle GUI.")
